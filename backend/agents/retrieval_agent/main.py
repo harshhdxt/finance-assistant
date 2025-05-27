@@ -7,20 +7,19 @@ import pickle
 
 app = FastAPI()
 
-# Load sentence transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Vector store path
+
 INDEX_PATH = "vectorstore/news_index.faiss"
 DOCS_PATH = "vectorstore/docs.pkl"
 
-# Load or create index and docs
+
 if os.path.exists(INDEX_PATH) and os.path.exists(DOCS_PATH):
     index = faiss.read_index(INDEX_PATH)
     with open(DOCS_PATH, "rb") as f:
         documents = pickle.load(f)
 else:
-    index = faiss.IndexFlatL2(384)  # 384 = embedding size of model
+    index = faiss.IndexFlatL2(384)  
     documents = []
 
 @app.get("/ping")
@@ -34,7 +33,7 @@ def add_documents(docs: list[str]):
     index.add(np.array(embeddings))
     documents.extend(docs)
 
-    # Save index and docs
+    
     faiss.write_index(index, INDEX_PATH)
     with open(DOCS_PATH, "wb") as f:
         pickle.dump(documents, f)

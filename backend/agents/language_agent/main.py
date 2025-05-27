@@ -5,7 +5,7 @@ from dotenv import dotenv_values
 from pathlib import Path
 from .schemas import LanguageRequest
 
-# Load OpenRouter key
+
 env_path = Path(__file__).parent / "open.env"
 env_vars = dotenv_values(env_path)
 OPENAI_API_KEY = env_vars.get("OPENAI_API_KEY")
@@ -13,10 +13,10 @@ OPENAI_API_KEY = env_vars.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError(f"OPENAI_API_KEY not found in {env_path}. Please check the file content.")
 
-# Initialize FastAPI app
+
 app = FastAPI()
 
-# 🔄 Use OpenRouter as backend for ChatOpenAI
+
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
     model="openai/gpt-3.5-turbo",
@@ -40,7 +40,7 @@ def generate_summary(payload: LanguageRequest):
         context_text = "\n".join(context) if context else "No extra context available."
 
         prompt = f"""
-You are a financial assistant for a portfolio manager. Based on the following data, generate a short spoken-style market brief (2–3 sentences):
+You are a financial assistant for a portfolio manager. Based on the following data, generate a short spoken-style market brief, make it sound intresting (2 or 3 sentences):
 
 📊 Stock Info:
 {stock_data}
@@ -56,15 +56,15 @@ You are a financial assistant for a portfolio manager. Based on the following da
         print(prompt)
 
         messages = [
-            SystemMessage(content="You are a professional financial assistant that produces short, clear morning market briefs."),
+            SystemMessage(content="You are a financial assistant specializing in generating accurate market briefs for portfolio managers. Your tone is clear, professional, and objective.void fluff. Always prioritize clarity, numbers, and relevance to portfolio decisions."),
             HumanMessage(content=prompt)
         ]
 
         response = llm.invoke(messages)
-        print("✅ LLM response:", response.content)
+        print("LLM response:", response.content)
 
         return {"summary": response.content}
 
     except Exception as e:
-        print("❌ Error in /generate-summary/:", str(e))
+        print(" Error in /generate-summary/:", str(e))
         return {"error": str(e)}

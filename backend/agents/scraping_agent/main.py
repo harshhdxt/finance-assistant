@@ -26,7 +26,7 @@ def get_news(ticker: str = Query(..., description="Stock ticker like AAPL, TSM")
         if "feed" not in data:
             return {"error": "No news found or API limit exceeded."}
 
-        # Extract top 3 news headlines
+        
         top_news = [
             {
                 "title": item["title"],
