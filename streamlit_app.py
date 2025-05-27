@@ -3,6 +3,7 @@ import requests
 import json
 from gtts import gTTS
 import os
+import torch  # Added for sentence-transformers stability
 from sentence_transformers import SentenceTransformer, util
 from typing import List
 
@@ -27,8 +28,18 @@ if st.button("📊 Get Market Brief"):
         try:
             # --- API Agent Logic ---
             url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
-            res = requests.get(url).json()
-            quote = res['quoteResponse']['result'][0]
+            response = requests.get(url)
+            if response.status_code != 200:
+                st.error("⚠️ Failed to fetch stock data. Try again later.")
+                st.stop()
+
+            try:
+                res = response.json()
+                quote = res['quoteResponse']['result'][0]
+            except Exception as e:
+                st.error(f"⚠️ Error parsing stock data: {str(e)}")
+                st.stop()
+
             stock_data = {
                 "ticker": ticker,
                 "shortName": quote.get("shortName"),
@@ -51,9 +62,9 @@ if st.button("📊 Get Market Brief"):
             summary = (
                 f"Good morning! {stock_data['shortName']} ({ticker}) is currently trading at "
                 f"${stock_data['currentPrice']}, with a market cap of ${stock_data['marketCap']:,}. "
-                f"52-week range: ${stock_data['fiftyTwoWeekLow']} - ${stock_data['fiftyTwoWeekHigh']}.\n\n"
-                f"Here's what you need to know: {top_docs[0]} Also, {top_docs[1]}"
-            )
+                f"52-week range: ${stock_data['fiftyTwoWeekLow']} - ${stock_data['fiftyTwoWeekHigh']}.")
+            summary += "\n\n"
+            summary += f"Here's what you need to know: {top_docs[0]} Also, {top_docs[1]}"
 
             # --- Voice Agent (TTS) ---
             tts = gTTS(summary)
