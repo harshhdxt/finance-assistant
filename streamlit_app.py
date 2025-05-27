@@ -1,36 +1,72 @@
 import streamlit as st
 import requests
+import json
+from gtts import gTTS
 import os
+from sentence_transformers import SentenceTransformer, util
+from typing import List
 
+# Initialize embedding model
+embedder = SentenceTransformer('all-MiniLM-L6-v2')
 
+# Dummy sample documents (in real case, load from FAISS or DB)
+docs = [
+    "TSMC beat earnings by 4% due to strong AI chip demand.",
+    "Samsung missed earnings by 2% as memory chip prices declined.",
+    "Analysts expect Asian tech stocks to remain strong despite volatility."
+]
+
+# Streamlit UI setup
 st.set_page_config(page_title="Finance Assistant", page_icon="📈")
-st.title("📢 Morning Market Brief")
+st.title("🧠 Multi-Agent Market Brief Generator")
 
+ticker = st.text_input("Enter Stock Ticker (e.g. TSM, AAPL, MSFT)", value="TSM")
 
-ticker = st.text_input("Enter a stock ticker (e.g., TSM, AAPL, MSFT)", value="TSM")
-
-
-if st.button("🎯 Get Market Brief"):
-    with st.spinner("Fetching market data and generating brief..."):
+if st.button("📊 Get Market Brief"):
+    with st.spinner("Fetching and summarizing market data..."):
         try:
-            
-            response = requests.get(f"http://localhost:8004/market-brief/?ticker={ticker}")
-            data = response.json()
+            # --- API Agent Logic ---
+            url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
+            res = requests.get(url).json()
+            quote = res['quoteResponse']['result'][0]
+            stock_data = {
+                "ticker": ticker,
+                "shortName": quote.get("shortName"),
+                "currentPrice": quote.get("regularMarketPrice"),
+                "marketCap": quote.get("marketCap"),
+                "fiftyTwoWeekHigh": quote.get("fiftyTwoWeekHigh"),
+                "fiftyTwoWeekLow": quote.get("fiftyTwoWeekLow"),
+                "previousClose": quote.get("regularMarketPreviousClose"),
+                "open": quote.get("regularMarketOpen"),
+            }
 
-            
-            if "final_summary" in data:
-                st.subheader("🧾 Market Summary")
-                st.write(data["final_summary"])
+            # --- Retrieval Agent Logic ---
+            query = f"{ticker} earnings"
+            query_embedding = embedder.encode(query, convert_to_tensor=True)
+            doc_embeddings = embedder.encode(docs, convert_to_tensor=True)
+            hits = util.semantic_search(query_embedding, doc_embeddings, top_k=2)
+            top_docs = [docs[hit['corpus_id']] for hit in hits[0]]
 
-                
-                if "audio_file" in data and os.path.exists(data["audio_file"]):
-                    st.subheader("🔊 Listen to Brief")
-                    with open(data["audio_file"], "rb") as audio:
-                        st.audio(audio.read(), format="audio/mp3")
-                else:
-                    st.warning("⚠️ Audio file not found.")
-            else:
-                st.error("❌ No summary found in response.")
+            # --- Language Agent Logic ---
+            summary = (
+                f"Good morning! {stock_data['shortName']} ({ticker}) is currently trading at "
+                f"${stock_data['currentPrice']}, with a market cap of ${stock_data['marketCap']:,}. "
+                f"52-week range: ${stock_data['fiftyTwoWeekLow']} - ${stock_data['fiftyTwoWeekHigh']}.\n\n"
+                f"Here's what you need to know: {top_docs[0]} Also, {top_docs[1]}"
+            )
+
+            # --- Voice Agent (TTS) ---
+            tts = gTTS(summary)
+            audio_file = f"summary_audio_{ticker}.mp3"
+            tts.save(audio_file)
+
+            # Display result
+            st.subheader("📝 Summary")
+            st.write(summary)
+
+            st.subheader("🔊 Voice Output")
+            with open(audio_file, "rb") as f:
+                st.audio(f.read(), format="audio/mp3")
 
         except Exception as e:
             st.error(f"Something went wrong: {str(e)}")
