@@ -1,0 +1,8 @@
+streamlit
+requests
+gtts
+sentence-transformers
+torch
+scipy
+
+
